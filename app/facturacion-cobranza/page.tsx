@@ -1380,6 +1380,23 @@ export default function FacturacionCobranzaPage() {
     [clientes]
   );
 
+  // Helper: obtener el monto contable de un embarque (preferir precio_quickpaid si aplica)
+  const getMontoContable = useCallback((e: any) => {
+    if (!e) return 0;
+    // Si QuickPaid está activo y existe precio_quickpaid, usarlo (post-descuento)
+    if (e?.quickpaid_enabled && (typeof e?.precio_quickpaid === "number" || typeof e?.precio_quickpaid === "string")) {
+      return typeof e.precio_quickpaid === "number" ? e.precio_quickpaid : Number(e.precio_quickpaid) || 0;
+    }
+    // Si existe cantidad_final_facturada explícita usarla
+    if (typeof e?.cantidad_final_facturada === "number") return e.cantidad_final_facturada;
+    // Preferir precio_flete (puede venir como number o string) o alias precioFlete/montoFacturado
+    if (typeof e?.precio_flete === "number") return e.precio_flete;
+    if (typeof e?.precio_flete === "string") return Number(e.precio_flete) || 0;
+    if (typeof e?.precioFlete === "number") return e.precioFlete;
+    if (typeof e?.montoFacturado === "number") return e.montoFacturado;
+    return 0;
+  }, []);
+
   // Exportar detalle del embarque (todas las secciones) a CSV (compatible Excel)
   const exportarDetalleEmbarqueExcel = useCallback(() => {
     if (!embarqueDetalle) return;
@@ -1412,7 +1429,7 @@ export default function FacturacionCobranzaPage() {
     push("Carta Porte", anyDet.carta_porte || "");
 
     // Resumen facturación
-    const monto = (anyDet.cantidad_final_facturada ?? anyDet.precio_flete ?? 0) as number;
+    const monto = getMontoContable(anyDet) as number;
   push("Valor Facturado", `${monto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${anyDet.moneda_flete || "MXN"}`);
     push("Estado Facturación", anyDet.estado_facturacion || "pendiente_facturacion");
     push("Pagado", anyDet.pagado ? "Sí" : "No");
@@ -1507,20 +1524,9 @@ export default function FacturacionCobranzaPage() {
         let sumUSD = 0;
         (data || []).forEach((e: any) => {
           const currency = e?.moneda_flete || "MXN";
-          let monto = 0;
-          // Si es QuickPaid y existe precio_quickpaid numérico, usar ese valor (post-descuento)
-          if (e?.quickpaid_enabled && (typeof e?.precio_quickpaid === "number" || typeof e?.precio_quickpaid === "string")) {
-            monto = typeof e.precio_quickpaid === "number" ? e.precio_quickpaid : Number(e.precio_quickpaid) || 0;
-          } else if (typeof e?.precio_flete === "number") {
-            monto = e.precio_flete;
-          } else if (typeof e?.precio_flete === "string") {
-            monto = Number(e.precio_flete) || 0;
-          } else if (typeof e?.cantidad_final_facturada === "number") {
-            monto = e.cantidad_final_facturada || 0;
-          }
-
-          if (currency === "USD") sumUSD += monto || 0;
-          else sumMXN += monto || 0;
+          const monto = getMontoContable(e) || 0;
+          if (currency === "USD") sumUSD += monto;
+          else sumMXN += monto;
         });
 
         if (mounted.current) {
@@ -1981,11 +1987,11 @@ export default function FacturacionCobranzaPage() {
     );
 
     const totalPendienteUSD = clienteEmbarquesUSD.reduce(
-      (sum, e) => sum + (e?.montoFacturado ?? (e as any)?.precioFlete ?? 0),
+      (sum, e) => sum + getMontoContable(e),
       0
     );
     const totalPendienteMXN = clienteEmbarquesMXN.reduce(
-      (sum, e) => sum + (e?.montoFacturado ?? (e as any)?.precioFlete ?? 0),
+      (sum, e) => sum + getMontoContable(e),
       0
     );
 
@@ -2285,7 +2291,7 @@ export default function FacturacionCobranzaPage() {
   const editarEmbarque = (embarque: EmbarqueAsignado) => {
     setEmbarqueEditando(embarque);
     setFormData({
-      montoFacturado: embarque.montoFacturado || embarque.precioFlete || 0,
+      montoFacturado: getMontoContable(embarque) || 0,
       fechaEntrega: embarque.fechaEntrega || "",
       observacionesFacturacion: embarque.observacionesFacturacion || "",
       pagado: embarque.pagado || false,
@@ -2624,14 +2630,8 @@ export default function FacturacionCobranzaPage() {
           (e.moneda_flete === "MXN" || !e.moneda_flete)
       );
 
-      const totalPendienteUSD = clienteEmbarquesUSD.reduce(
-        (sum, e) => sum + (e.montoFacturado ?? (e as any)?.precioFlete ?? 0),
-        0
-      );
-      const totalPendienteMXN = clienteEmbarquesMXN.reduce(
-        (sum, e) => sum + (e.montoFacturado ?? (e as any)?.precioFlete ?? 0),
-        0
-      );
+      const totalPendienteUSD = clienteEmbarquesUSD.reduce((sum, e) => sum + getMontoContable(e), 0);
+      const totalPendienteMXN = clienteEmbarquesMXN.reduce((sum, e) => sum + getMontoContable(e), 0);
 
       const limiteUSD = creditLimits[cliente.id]?.usd || 0;
       const limiteMXN = creditLimits[cliente.id]?.mxn || 0;
@@ -2658,17 +2658,14 @@ export default function FacturacionCobranzaPage() {
         operador:
           filtroOperador === "todos" ? "Todos los operadores" : filtroOperador,
         totalEmbarques: embarquesFiltrados.length,
-        montoTotal: embarquesFiltrados.reduce(
-          (sum, e) => sum + (e.montoFacturado || 0),
-          0
-        ),
+        montoTotal: embarquesFiltrados.reduce((sum, e) => sum + getMontoContable(e), 0),
         embarques: embarquesFiltrados.map((e) => ({
           folio: e.folio,
           cliente: e.clienteNombre,
           operador: e.operadorAsignado.nombre,
           camion: `${e.camionAsignado.marca} ${e.camionAsignado.modelo} (${e.camionAsignado.numeroEconomico})`,
           fechaAsignacion: e.fechaAsignacion,
-          montoFacturado: e.montoFacturado || e.precioFlete || 0,
+          montoFacturado: getMontoContable(e),
           moneda: e.moneda_flete || "MXN",
           pagado: e.pagado ? "Sí" : "No",
           estado: e.estado_facturacion || "pendiente_facturacion",
@@ -2882,13 +2879,7 @@ export default function FacturacionCobranzaPage() {
     const safeStr = (v: any) => (v ?? "").toString().toLowerCase();
     const safeNum = (v: any) => (typeof v === "number" ? v : Number(v) || 0);
     const dateOf = (e: any) => new Date(e.fecha_creacion || e.updated_at || 0).getTime();
-    const amountOf = (e: any) => {
-      const mf = (e as any).montoFacturado;
-      const pf = (e as any).precioFlete;
-      const m = typeof mf === "number" ? mf : typeof mf === "string" ? Number(mf) : undefined;
-      const p = typeof pf === "number" ? pf : typeof pf === "string" ? Number(pf) : 0;
-      return typeof m === "number" ? m : p;
-    };
+    const amountOf = (e: any) => getMontoContable(e);
     let va: any;
     let vb: any;
     switch (by) {
@@ -2962,7 +2953,7 @@ export default function FacturacionCobranzaPage() {
       // Debe tener operador y precio asignados
       .filter((e: any) => {
         const tieneOperador = Boolean(e?.operadorAsignado?.id || e?.operadorAsignado?.nombre);
-        const precio = (e as any).montoFacturado ?? (e as any).precioFlete ?? (e as any).precio_flete;
+        const precio = getMontoContable(e);
         const tienePrecio = typeof precio === "number" ? precio > 0 : Number(precio) > 0;
         return tieneOperador && tienePrecio;
       })
@@ -3427,7 +3418,7 @@ export default function FacturacionCobranzaPage() {
       }
 
       const entry = dataMap.get(clienteId)!;
-      const monto = embarque.precioFlete || embarque.montoFacturado || 0;
+      const monto = getMontoContable(embarque);
 
       entry.numFacturas++;
 
@@ -5480,14 +5471,8 @@ export default function FacturacionCobranzaPage() {
                               (e.moneda_flete === "MXN" || !e.moneda_flete)
                           );
 
-                          const totalPendienteUSD = clienteEmbarquesUSD.reduce(
-                            (sum, e) => sum + (e.montoFacturado ?? e.precioFlete ?? 0),
-                            0
-                          );
-                          const totalPendienteMXN = clienteEmbarquesMXN.reduce(
-                            (sum, e) => sum + (e.montoFacturado ?? e.precioFlete ?? 0),
-                            0
-                          );
+                          const totalPendienteUSD = clienteEmbarquesUSD.reduce((sum, e) => sum + getMontoContable(e), 0);
+                          const totalPendienteMXN = clienteEmbarquesMXN.reduce((sum, e) => sum + getMontoContable(e), 0);
 
                           const limiteUSD = creditLimits[cliente.id]?.usd || 0;
                           const limiteMXN = creditLimits[cliente.id]?.mxn || 0;
@@ -6085,46 +6070,7 @@ export default function FacturacionCobranzaPage() {
                                 <p className="text-gray-600 font-bold">
                                   {(() => {
                                     const currency = embarque.moneda_flete || "MXN";
-                                    const candidates: Array<number | undefined> = [
-                                      typeof embarque.cantidad_final_facturada ===
-                                      "number"
-                                        ? embarque.cantidad_final_facturada
-                                        : typeof (embarque as any)
-                                            .cantidad_final_facturada === "string"
-                                        ? Number(
-                                            (embarque as any)
-                                              .cantidad_final_facturada
-                                          )
-                                        : undefined,
-                                      typeof (embarque as any).precio_flete ===
-                                      "string"
-                                        ? Number((embarque as any).precio_flete)
-                                        : typeof (embarque as any).precio_flete ===
-                                          "number"
-                                        ? (embarque as any).precio_flete
-                                        : undefined,
-                                      typeof (embarque as any).montoFacturado ===
-                                      "string"
-                                        ? Number((embarque as any).montoFacturado)
-                                        : typeof (embarque as any).montoFacturado ===
-                                          "number"
-                                        ? (embarque as any).montoFacturado
-                                        : undefined,
-                                      typeof (embarque as any).precioFlete ===
-                                      "string"
-                                        ? Number((embarque as any).precioFlete)
-                                        : typeof (embarque as any).precioFlete ===
-                                          "number"
-                                        ? (embarque as any).precioFlete
-                                        : undefined,
-                                    ];
-                                    const amountCandidate = candidates.find(
-                                      (v) => typeof v === "number" && !isNaN(v)
-                                    );
-                                    const amount =
-                                      typeof amountCandidate === "number"
-                                        ? amountCandidate
-                                        : 0;
+                                    const amount = getMontoContable(embarque) || 0;
                                     return (
                                       <>
                                         ${amount.toLocaleString('es-MX', {
@@ -6395,7 +6341,7 @@ export default function FacturacionCobranzaPage() {
                             })
                             .filter((e: any) => {
                               const tieneOperador = Boolean(e?.operadorAsignado?.id || e?.operadorAsignado?.nombre);
-                              const precio = (e as any).montoFacturado ?? (e as any).precioFlete ?? (e as any).precio_flete;
+                              const precio = getMontoContable(e);
                               const tienePrecio = typeof precio === "number" ? precio > 0 : Number(precio) > 0;
                               return tieneOperador && tienePrecio;
                             })
@@ -6420,7 +6366,7 @@ export default function FacturacionCobranzaPage() {
                               (e as any).tipoServicioNombre ||
                               (e as any).tipoServicio || "-",
                             fecha: new Date((e as any).fechaAsignacion || (e as any).fecha_creacion || (e as any).updated_at || Date.now()).toLocaleDateString(),
-                            monto: ((e as any).montoFacturado ?? (e as any).precioFlete ?? (e as any).precio_flete ?? 0),
+                            monto: getMontoContable(e),
                             moneda: (e as any).moneda_flete || "MXN",
                             estado: (e as any).estado_facturacion || "pendiente_facturacion",
                           }));
