@@ -445,6 +445,9 @@ const ModificacionesHistory = ({ embarqueId }: { embarqueId: string }) => {
 export default function FacturacionCobranzaPage() {
   const mounted = useRef(true);
 
+  // Helper: mostrar nombre legible de la moneda en la UI
+  const monedaNombre = (code?: string) => (code === "USD" ? "Dólares Americanos" : "Pesos Mexicanos");
+
   const [contingencyPaymentsDb, setContingencyPaymentsDb] = useState<{
     [embarqueId: string]: {
       monto_original: number;
@@ -1419,8 +1422,19 @@ export default function FacturacionCobranzaPage() {
     // QuickPaid
     if (anyDet.quickpaid_enabled) {
       push("QuickPaid %", anyDet.quickpaid_percent ?? "");
-      push("Descuento QuickPaid", anyDet.quickpaid_descuento ?? "");
-      push("Precio QuickPaid", anyDet.precio_quickpaid ?? "");
+      const monedaAny = anyDet.moneda_flete || "MXN";
+      push(
+        "Descuento QuickPaid",
+        anyDet.quickpaid_descuento != null
+          ? `${Number(anyDet.quickpaid_descuento).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${monedaAny}`
+          : "-"
+      );
+      push(
+        "Precio QuickPaid",
+        anyDet.precio_quickpaid != null
+          ? `${Number(anyDet.precio_quickpaid).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${monedaAny}`
+          : "-"
+      );
     }
 
     // Facturas
@@ -6058,89 +6072,157 @@ export default function FacturacionCobranzaPage() {
                             </span>
                           </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-700">
-                            Monto Flete:
-                          </p>
-                          <p className="text-gray-600 font-bold">
-                            {(() => {
-                              const currency = embarque.moneda_flete || "MXN";
-                              const candidates: Array<number | undefined> = [
-                                typeof embarque.cantidad_final_facturada ===
-                                "number"
-                                  ? embarque.cantidad_final_facturada
-                                  : typeof (embarque as any)
-                                      .cantidad_final_facturada === "string"
-                                  ? Number(
-                                      (embarque as any)
-                                        .cantidad_final_facturada
-                                    )
-                                  : undefined,
-                                typeof (embarque as any).precio_flete ===
-                                "string"
-                                  ? Number((embarque as any).precio_flete)
-                                  : typeof (embarque as any).precio_flete ===
-                                    "number"
-                                  ? (embarque as any).precio_flete
-                                  : undefined,
-                                typeof (embarque as any).montoFacturado ===
-                                "string"
-                                  ? Number((embarque as any).montoFacturado)
-                                  : typeof (embarque as any).montoFacturado ===
-                                    "number"
-                                  ? (embarque as any).montoFacturado
-                                  : undefined,
-                                typeof (embarque as any).precioFlete ===
-                                "string"
-                                  ? Number((embarque as any).precioFlete)
-                                  : typeof (embarque as any).precioFlete ===
-                                    "number"
-                                  ? (embarque as any).precioFlete
-                                  : undefined,
-                              ];
-                              const amountCandidate = candidates.find(
-                                (v) => typeof v === "number" && !isNaN(v)
-                              );
-                              const amount =
-                                typeof amountCandidate === "number"
-                                  ? amountCandidate
-                                  : 0;
-                              return (
-                                <>
-                                  ${amount.toLocaleString('es-MX', {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                  })} {currency}
-                                </>
-                              );
-                            })()}
-                          </p>
-                          {embarque.quickpaid_enabled && (
-                            <div className="mt-1 text-xs">
-                              {typeof embarque.quickpaid_descuento ===
-                                "number" &&
-                                embarque.quickpaid_descuento > 0 && (
-                                  <p className="text-yellow-700 font-semibold">
-                                    Descuento: -$
-                                    {embarque.quickpaid_descuento.toLocaleString('es-MX', {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2,
-                                    })}
-                                  </p>
+                        {embarque.quickpaid_enabled ? (
+                          <div>
+                            <div className="flex items-center gap-4">
+                              <div className="flex-1">
+                                <p className="font-medium text-gray-700">Monto Flete:</p>
+                                <p className="text-gray-600 font-bold">
+                                  {(() => {
+                                    const currency = embarque.moneda_flete || "MXN";
+                                    const candidates: Array<number | undefined> = [
+                                      typeof embarque.cantidad_final_facturada ===
+                                      "number"
+                                        ? embarque.cantidad_final_facturada
+                                        : typeof (embarque as any)
+                                            .cantidad_final_facturada === "string"
+                                        ? Number(
+                                            (embarque as any)
+                                              .cantidad_final_facturada
+                                          )
+                                        : undefined,
+                                      typeof (embarque as any).precio_flete ===
+                                      "string"
+                                        ? Number((embarque as any).precio_flete)
+                                        : typeof (embarque as any).precio_flete ===
+                                          "number"
+                                        ? (embarque as any).precio_flete
+                                        : undefined,
+                                      typeof (embarque as any).montoFacturado ===
+                                      "string"
+                                        ? Number((embarque as any).montoFacturado)
+                                        : typeof (embarque as any).montoFacturado ===
+                                          "number"
+                                        ? (embarque as any).montoFacturado
+                                        : undefined,
+                                      typeof (embarque as any).precioFlete ===
+                                      "string"
+                                        ? Number((embarque as any).precioFlete)
+                                        : typeof (embarque as any).precioFlete ===
+                                          "number"
+                                        ? (embarque as any).precioFlete
+                                        : undefined,
+                                    ];
+                                    const amountCandidate = candidates.find(
+                                      (v) => typeof v === "number" && !isNaN(v)
+                                    );
+                                    const amount =
+                                      typeof amountCandidate === "number"
+                                        ? amountCandidate
+                                        : 0;
+                                    return (
+                                      <>
+                                        ${amount.toLocaleString('es-MX', {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2,
+                                        })} {currency}
+                                      </>
+                                    );
+                                  })()}
+                                </p>
+                              </div>
+
+                              <div className="flex-1 text-center">
+                                <p className="font-medium text-gray-700">Descuento</p>
+                                {typeof embarque.quickpaid_descuento === "number" && embarque.quickpaid_descuento > 0 ? (
+                                  <div>
+                                    <p className="text-yellow-700 font-semibold">
+                                      -${embarque.quickpaid_descuento.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{(embarque.moneda_flete || 'MXN')}</p>
+                                  </div>
+                                ) : (
+                                  <p className="text-gray-500">-</p>
                                 )}
-                              {typeof embarque.precio_quickpaid === "number" &&
-                                embarque.precio_quickpaid > 0 && (
-                                  <p className="text-yellow-900 font-semibold">
-                                    Precio QuickPaid: $
-                                    {embarque.precio_quickpaid.toLocaleString('es-MX', {
-                                      minimumFractionDigits: 2,
-                                      maximumFractionDigits: 2,
-                                    })}
-                                  </p>
+                              </div>
+
+                              <div className="flex-1 text-right">
+                                <p className="font-medium text-gray-700">Precio QuickPaid</p>
+                                {typeof embarque.precio_quickpaid === "number" && embarque.precio_quickpaid > 0 ? (
+                                  <div>
+                                    <p className="text-yellow-900 font-semibold">
+                                      ${embarque.precio_quickpaid.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{(embarque.moneda_flete || 'MXN')}</p>
+                                  </div>
+                                ) : (
+                                  <p className="text-gray-500">-</p>
                                 )}
+                              </div>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-center gap-4">
+                              <div className="w-full">
+                                <p className="font-medium text-gray-700">Monto Flete:</p>
+                                <p className="text-gray-600 font-bold">
+                                  {(() => {
+                                    const currency = embarque.moneda_flete || "MXN";
+                                    const candidates: Array<number | undefined> = [
+                                      typeof embarque.cantidad_final_facturada ===
+                                        "number"
+                                        ? embarque.cantidad_final_facturada
+                                        : typeof (embarque as any)
+                                          .cantidad_final_facturada === "string"
+                                          ? Number(
+                                            (embarque as any)
+                                              .cantidad_final_facturada
+                                          )
+                                          : undefined,
+                                      typeof (embarque as any).precio_flete ===
+                                        "string"
+                                        ? Number((embarque as any).precio_flete)
+                                        : typeof (embarque as any).precio_flete ===
+                                          "number"
+                                          ? (embarque as any).precio_flete
+                                          : undefined,
+                                      typeof (embarque as any).montoFacturado ===
+                                        "string"
+                                        ? Number((embarque as any).montoFacturado)
+                                        : typeof (embarque as any).montoFacturado ===
+                                          "number"
+                                          ? (embarque as any).montoFacturado
+                                          : undefined,
+                                      typeof (embarque as any).precioFlete ===
+                                        "string"
+                                        ? Number((embarque as any).precioFlete)
+                                        : typeof (embarque as any).precioFlete ===
+                                          "number"
+                                          ? (embarque as any).precioFlete
+                                          : undefined,
+                                    ];
+                                    const amountCandidate = candidates.find(
+                                      (v) => typeof v === "number" && !isNaN(v)
+                                    );
+                                    const amount =
+                                      typeof amountCandidate === "number"
+                                        ? amountCandidate
+                                        : 0;
+                                    return (
+                                      <>
+                                        ${amount.toLocaleString('es-MX', {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2,
+                                        })} {currency}
+                                      </>
+                                    );
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         {embarque.fechaEntrega && (
                           <div>
                             <p className="font-medium text-gray-700">
@@ -6938,6 +7020,45 @@ export default function FacturacionCobranzaPage() {
                                   ).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                                 } {embarqueDetalle.moneda_flete || "MXN"}
                               </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {monedaNombre(embarqueDetalle.moneda_flete)}
+                              </div>
+
+                              {(embarqueDetalle as any).quickpaid_enabled ? (
+                                <div className="mt-4">
+                                  <div className="flex flex-col md:flex-row md:items-start md:justify-end gap-4">
+                                    <div className="text-right md:text-right">
+                                      <p className="text-sm text-gray-500">Monto Flete</p>
+                                      <p className="font-semibold text-gray-900">${((embarqueDetalle.cantidad_final_facturada ?? embarqueDetalle.precio_flete ?? 0) as number).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {embarqueDetalle.moneda_flete || 'MXN'}</p>
+                                      <p className="text-xs text-gray-500 mt-0.5">{monedaNombre(embarqueDetalle.moneda_flete)}</p>
+                                    </div>
+
+                                    <div className="text-right md:text-right">
+                                      <p className="text-sm text-gray-500">Descuento</p>
+                                      {(embarqueDetalle as any).quickpaid_enabled && typeof (embarqueDetalle as any).quickpaid_descuento === 'number' && (embarqueDetalle as any).quickpaid_descuento > 0 ? (
+                                        <>
+                                          <p className="font-semibold text-yellow-700">-${(embarqueDetalle as any).quickpaid_descuento.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                          <p className="text-xs text-gray-500 mt-0.5">{monedaNombre((embarqueDetalle as any).moneda_flete)}</p>
+                                        </>
+                                      ) : (
+                                        <p className="text-gray-500">-</p>
+                                      )}
+                                    </div>
+
+                                    <div className="text-right md:text-right">
+                                      <p className="text-sm text-gray-500">Precio QuickPaid</p>
+                                      {(embarqueDetalle as any).quickpaid_enabled && typeof (embarqueDetalle as any).precio_quickpaid === 'number' && (embarqueDetalle as any).precio_quickpaid > 0 ? (
+                                        <>
+                                          <p className="font-semibold text-yellow-900">${(embarqueDetalle as any).precio_quickpaid.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                          <p className="text-xs text-gray-500 mt-0.5">{monedaNombre((embarqueDetalle as any).moneda_flete)}</p>
+                                        </>
+                                      ) : (
+                                        <p className="text-gray-500">-</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -6963,6 +7084,7 @@ export default function FacturacionCobranzaPage() {
                           <span className="text-gray-500">Valor Facturado</span>
                           <span className="font-semibold text-gray-900">
                             ${ (embarqueDetalle.cantidad_final_facturada ?? embarqueDetalle.precio_flete ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) } {embarqueDetalle.moneda_flete}
+                            <span className="block text-xs text-gray-500">{monedaNombre(embarqueDetalle.moneda_flete)}</span>
                           </span>
                         </div>
                         <div className="flex-1 flex items-center justify-between md:justify-start md:gap-2 py-1">
@@ -7032,8 +7154,8 @@ export default function FacturacionCobranzaPage() {
                       {(embarqueDetalle as any).quickpaid_enabled && (
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                           <p className="flex justify-between md:block"><span className="text-gray-500">QuickPaid %</span><span className="md:block md:mt-1 font-medium text-gray-900">{(embarqueDetalle as any).quickpaid_percent ?? "-"}</span></p>
-                          <p className="flex justify-between md:block"><span className="text-gray-500">Descuento</span><span className="md:block md:mt-1 font-medium text-gray-900">{(embarqueDetalle as any).quickpaid_descuento ?? "-"}</span></p>
-                          <p className="flex justify-between md:block"><span className="text-gray-500">Precio QuickPaid</span><span className="md:block md:mt-1 font-medium text-gray-900">{(embarqueDetalle as any).precio_quickpaid ?? "-"}</span></p>
+                          <p className="flex justify-between md:block"><span className="text-gray-500">Descuento</span><span className="md:block md:mt-1 font-medium text-gray-900">{(embarqueDetalle as any).quickpaid_descuento != null ? `${(embarqueDetalle as any).quickpaid_descuento.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${(embarqueDetalle as any).moneda_flete || 'MXN'}` : "-"}</span><span className="block text-xs text-gray-500">{monedaNombre((embarqueDetalle as any).moneda_flete)}</span></p>
+                          <p className="flex justify-between md:block"><span className="text-gray-500">Precio QuickPaid</span><span className="md:block md:mt-1 font-medium text-gray-900">{(embarqueDetalle as any).precio_quickpaid != null ? `${(embarqueDetalle as any).precio_quickpaid.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${(embarqueDetalle as any).moneda_flete || 'MXN'}` : "-"}</span><span className="block text-xs text-gray-500">{monedaNombre((embarqueDetalle as any).moneda_flete)}</span></p>
                           <div></div>
                         </div>
                       )}
