@@ -1491,7 +1491,7 @@ export default function FacturacionCobranzaPage() {
         const { data, error } = await supabase
           .from("embarques")
           .select(
-            `precio_flete, moneda_flete, fecha_creacion, cantidad_final_facturada, estado, estado_facturacion`
+            `precio_flete, moneda_flete, fecha_creacion, cantidad_final_facturada, estado, estado_facturacion, quickpaid_enabled, precio_quickpaid`
           )
           .eq("estado", "finalizado")
           .gte("fecha_creacion", desde)
@@ -1507,11 +1507,17 @@ export default function FacturacionCobranzaPage() {
         (data || []).forEach((e: any) => {
           const currency = e?.moneda_flete || "MXN";
           let monto = 0;
-          if (typeof e?.precio_flete === "number") monto = e.precio_flete;
-          else if (typeof e?.precio_flete === "string")
+
+          // Si es QuickPaid y existe precio_quickpaid numérico, usar ese valor (post-descuento)
+          if (e?.quickpaid_enabled && (typeof e?.precio_quickpaid === "number" || typeof e?.precio_quickpaid === "string")) {
+            monto = typeof e.precio_quickpaid === "number" ? e.precio_quickpaid : Number(e.precio_quickpaid) || 0;
+          } else if (typeof e?.precio_flete === "number") {
+            monto = e.precio_flete;
+          } else if (typeof e?.precio_flete === "string") {
             monto = Number(e.precio_flete) || 0;
-          else if (typeof e?.cantidad_final_facturada === "number")
+          } else if (typeof e?.cantidad_final_facturada === "number") {
             monto = e.cantidad_final_facturada || 0;
+          }
 
           if (currency === "USD") sumUSD += monto || 0;
           else sumMXN += monto || 0;
