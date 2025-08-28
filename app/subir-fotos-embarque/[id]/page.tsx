@@ -75,6 +75,27 @@ export default function SubirFotosEmbarquePage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
 
+  // Mostrar correctamente el identificador del remolque.
+  // Preferir el remolque enlazado (embarque.remolque.numero_economico).
+  // Si no existe remolque enlazado, usar los campos manuales: remolque_numero_economico / remolque_placa.
+  const remolqueDisplay = (() => {
+    if (!embarque) return "No asignado"
+    // Cuando el remolque viene de la tabla `remolques`
+    if ((embarque as any).remolque) {
+      const r: any = (embarque as any).remolque
+      const num = r.numero_economico || ""
+      const placas = r.placas || r.placa || ""
+      return placas ? `${num} (${placas})` : num || "No asignado"
+    }
+
+    // Remolque capturado manualmente en la propia fila de embarque
+    const manualNum = (embarque as any).remolque_numero_economico || ""
+    const manualPlaca = (embarque as any).remolque_placa || (embarque as any).remolque_placas || ""
+    if (manualNum) return manualPlaca ? `${manualNum} (${manualPlaca})` : manualNum
+    if (manualPlaca) return `Manual: ${manualPlaca}`
+    return "No asignado"
+  })()
+
   const [openSuccessDialog, setOpenSuccessDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const [successType, setSuccessType] = useState<"upload" | "delete">("upload")
@@ -483,7 +504,7 @@ export default function SubirFotosEmbarquePage() {
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-600">No. Remolque</Label>
-                <p className="text-sm">{embarque.remolque?.numero_economico || embarque.remolque?.placas || "No asignado"}</p>
+                <p className="text-sm">{remolqueDisplay}</p>
               </div>
             </div>
           </CardContent>
