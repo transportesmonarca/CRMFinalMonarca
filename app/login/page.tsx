@@ -110,7 +110,8 @@ export default function LoginPage() {
               <img
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/LOGO%20MONARCA-Qr7vd747xwSM8JxAy9kmgezl3mcHRh.png"
                 alt="Transportes Internacionales Monarca"
-                className="w-16 h-16 mx-auto mb-4"
+                // Oculto en móviles, visible en pantallas grandes para evitar duplicado
+                className="w-16 h-16 mx-auto mb-4 hidden lg:block"
               />
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Iniciar Sesión</h2>
               <p className="text-gray-600">Ingresa tus credenciales para acceder al sistema</p>
@@ -125,7 +126,7 @@ export default function LoginPage() {
         <div className="text-center text-sm text-gray-500">
           Made by: <span className="font-medium text-gray-700">Kleos Digital 2025</span> for{" "}
           <span className="font-medium text-gray-700">Transportes Internacionales Monarca</span>{" "}
-          <span className="text-gray-400">v1.0</span>
+          <span className="text-gray-400">v.1.1</span>
         </div>
       </footer>
 
