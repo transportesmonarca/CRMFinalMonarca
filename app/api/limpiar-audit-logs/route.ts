@@ -1,24 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { limpiarAuditLogsAntiguos } from "@/lib/audit"
-import { isAuthenticated, hasRole } from "@/lib/auth"
 import { supabase } from "@/lib/supabase"
+
+// Allow using process.env inside this route handler without installing @types/node
+declare const process: any
 
 export async function POST(request: NextRequest) {
     try {
-        // Verificar autenticación
-        if (!isAuthenticated()) {
-            return NextResponse.json(
-                { error: "No autorizado" },
-                { status: 401 }
-            )
-        }
-
-        // Verificar que sea admin (opcional, dependiendo de permisos)
-        if (!hasRole("admin")) {
-            return NextResponse.json(
-                { error: "Permisos insuficientes" },
-                { status: 403 }
-            )
+        // Verificación server-side: se requiere un token secreto en la cabecera
+        // (por ejemplo: `x-admin-token`). Configure ADMIN_API_TOKEN en el entorno.
+    const adminToken = (process as any)?.env?.ADMIN_API_TOKEN
+        const provided = request.headers.get("x-admin-token") || request.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
+        if (!adminToken || provided !== adminToken) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 })
         }
 
         // Obtener parámetros del body (opcional, por defecto 6 meses)
@@ -30,9 +24,8 @@ export async function POST(request: NextRequest) {
 
         if (resultado.success) {
             // Obtener estadísticas después de la limpieza
-            const { count: registrosRestantes } = await supabase
-                .from("audit_logs")
-                .select("*", { count: "exact", head: true })
+            const countResp = await supabase.from("audit_logs").select("*", { count: "exact", head: true })
+            const registrosRestantes = (countResp as any).count ?? 0
 
             return NextResponse.json({
                 message: "Limpieza completada exitosamente",
@@ -56,32 +49,31 @@ export async function POST(request: NextRequest) {
 }
 
 // También permitir GET para verificar estado (opcional)
-export async function GET() {
+export async function GET(request: Request) {
     try {
-        if (!isAuthenticated()) {
-            return NextResponse.json(
-                { error: "No autorizado" },
-                { status: 401 }
-            )
+        // Verificación server-side igual que en POST
+    const adminToken = (process as any)?.env?.ADMIN_API_TOKEN
+        const provided = (request as any).headers?.get?.("x-admin-token") || (request as any).headers?.get?.("authorization")?.replace(/^Bearer\s+/i, "")
+        if (!adminToken || provided !== adminToken) {
+            return NextResponse.json({ error: "No autorizado" }, { status: 401 })
         }
 
         // Obtener estadísticas actuales
-        const { supabase } = await import("@/lib/supabase")
-        const { count: totalRegistros } = await supabase
-            .from("audit_logs")
-            .select("*", { count: "exact", head: true })
+        const totalResp = await supabase.from("audit_logs").select("*", { count: "exact", head: true })
+        const totalRegistros = (totalResp as any).count ?? 0
 
         const fechaLimite = new Date()
         fechaLimite.setMonth(fechaLimite.getMonth() - 6)
-        const { count: registrosAntiguos } = await supabase
+        const antiguosResp = await supabase
             .from("audit_logs")
             .select("*", { count: "exact", head: true })
             .lt("fecha_creacion", fechaLimite.toISOString())
+        const registrosAntiguos = (antiguosResp as any).count ?? 0
 
         return NextResponse.json({
-            totalRegistros: totalRegistros || 0,
-            registrosAntiguos: registrosAntiguos || 0,
-            registrosActivos: (totalRegistros || 0) - (registrosAntiguos || 0)
+            totalRegistros: totalRegistros,
+            registrosAntiguos: registrosAntiguos,
+            registrosActivos: totalRegistros - registrosAntiguos
         })
     } catch (error) {
         console.error("Error obteniendo estadísticas:", error)
