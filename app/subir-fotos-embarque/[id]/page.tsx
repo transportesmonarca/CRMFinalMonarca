@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-// Note: this page is intentionally public (no MainLayout) so operators can upload via link without signing in
+import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -49,17 +49,6 @@ import {
 import { subirFotoEmbarque, eliminarFotoEmbarque } from "@/lib/blob"
 import { agregarAuditLog } from "@/lib/audit"
 
-// Public wrapper used to render this page without the auth-checking MainLayout
-function PublicWrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="flex-1 pt-16">
-        <div className="p-6">{children}</div>
-      </main>
-    </div>
-  )
-}
-
 export default function SubirFotosEmbarquePage() {
   const params = useParams()
   const router = useRouter()
@@ -74,27 +63,6 @@ export default function SubirFotosEmbarquePage() {
   const [confirmacionGuardada, setConfirmacionGuardada] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-
-  // Mostrar correctamente el identificador del remolque.
-  // Preferir el remolque enlazado (embarque.remolque.numero_economico).
-  // Si no existe remolque enlazado, usar los campos manuales: remolque_numero_economico / remolque_placa.
-  const remolqueDisplay = (() => {
-    if (!embarque) return "No asignado"
-    // Cuando el remolque viene de la tabla `remolques`
-    if ((embarque as any).remolque) {
-      const r: any = (embarque as any).remolque
-      const num = r.numero_economico || ""
-      const placas = r.placas || r.placa || ""
-      return placas ? `${num} (${placas})` : num || "No asignado"
-    }
-
-    // Remolque capturado manualmente en la propia fila de embarque
-    const manualNum = (embarque as any).remolque_numero_economico || ""
-    const manualPlaca = (embarque as any).remolque_placa || (embarque as any).remolque_placas || ""
-    if (manualNum) return manualPlaca ? `${manualNum} (${manualPlaca})` : manualNum
-    if (manualPlaca) return `Manual: ${manualPlaca}`
-    return "No asignado"
-  })()
 
   const [openSuccessDialog, setOpenSuccessDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
@@ -426,20 +394,20 @@ export default function SubirFotosEmbarquePage() {
 
   if (loading) {
     return (
-      <PublicWrapper>
+      <MainLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-2 text-gray-600">Cargando información del embarque...</p>
           </div>
         </div>
-      </PublicWrapper>
+      </MainLayout>
     )
   }
 
   if (!embarque) {
     return (
-      <PublicWrapper>
+      <MainLayout>
         <div className="text-center py-12">
           <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-red-500" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Embarque no encontrado</h1>
@@ -449,12 +417,12 @@ export default function SubirFotosEmbarquePage() {
             Regresar
           </Button>
         </div>
-      </PublicWrapper>
+      </MainLayout>
     )
   }
 
   return (
-    <PublicWrapper>
+    <MainLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -504,7 +472,9 @@ export default function SubirFotosEmbarquePage() {
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-600">No. Remolque</Label>
-                <p className="text-sm">{remolqueDisplay}</p>
+                <p className="text-sm">
+                  {embarque.remolque?.numero_economico || (embarque as any).remolque_numero_economico || embarque.remolque?.placas || (embarque as any).remolque_placa || "No asignado"}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -935,6 +905,6 @@ export default function SubirFotosEmbarquePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </PublicWrapper>
+    </MainLayout>
   )
 }

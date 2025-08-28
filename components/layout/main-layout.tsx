@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { usePathname } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Header } from "./header"
 import { Sidebar } from "./sidebar"
 import { isAuthenticated } from "@/lib/auth"
@@ -15,13 +15,17 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  // const router = useRouter()
+  const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
     // Verificar autenticación al montar el componente
     setMounted(true)
-  }, [])
+    if (!isAuthenticated()) {
+      // navigate after mount
+      router.push("/login")
+    }
+  }, [router])
 
   // Auto-close sidebar on route change (mobile) and on small window widths
   useEffect(() => {
@@ -48,8 +52,10 @@ export function MainLayout({ children }: MainLayoutProps) {
   if (!mounted) {
     return null
   }
-  // Do not auto-redirect or auto-logout users here.
-  // Users remain on the site until they explicitly logout or close the browser.
+
+  if (!isAuthenticated()) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
