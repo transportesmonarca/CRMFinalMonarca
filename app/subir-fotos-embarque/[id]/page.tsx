@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { MainLayout } from "@/components/layout/main-layout"
+// Note: this page is intentionally public (no MainLayout) so operators can upload via link without signing in
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -48,6 +48,17 @@ import {
 } from "@/lib/supabase"
 import { subirFotoEmbarque, eliminarFotoEmbarque } from "@/lib/blob"
 import { agregarAuditLog } from "@/lib/audit"
+
+// Public wrapper used to render this page without the auth-checking MainLayout
+function PublicWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <main className="flex-1 pt-16">
+        <div className="p-6">{children}</div>
+      </main>
+    </div>
+  )
+}
 
 export default function SubirFotosEmbarquePage() {
   const params = useParams()
@@ -394,20 +405,20 @@ export default function SubirFotosEmbarquePage() {
 
   if (loading) {
     return (
-      <MainLayout>
+      <PublicWrapper>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="mt-2 text-gray-600">Cargando información del embarque...</p>
           </div>
         </div>
-      </MainLayout>
+      </PublicWrapper>
     )
   }
 
   if (!embarque) {
     return (
-      <MainLayout>
+      <PublicWrapper>
         <div className="text-center py-12">
           <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-red-500" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Embarque no encontrado</h1>
@@ -417,12 +428,12 @@ export default function SubirFotosEmbarquePage() {
             Regresar
           </Button>
         </div>
-      </MainLayout>
+      </PublicWrapper>
     )
   }
 
   return (
-    <MainLayout>
+    <PublicWrapper>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -903,6 +914,6 @@ export default function SubirFotosEmbarquePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </MainLayout>
+    </PublicWrapper>
   )
 }

@@ -152,17 +152,11 @@ export async function login(username: string, password: string): Promise<User | 
         nombre: u.nombre,
       }
 
-      // Guardar sesión con expiración
-      const { data: sec2 } = await supabase
-        .from("security_settings")
-        .select("session_timeout_minutes")
-        .eq("id", 1)
-        .single()
-      const ttl = (sec2?.session_timeout_minutes ?? 30) * 60_000
-      const session = { user, exp: Date.now() + ttl }
+      // Guardar sesión sin expiración en el cliente.
+      // La sesión permanecerá en localStorage hasta que el usuario cierre sesión
+      // explícitamente o borre los datos del navegador.
       if (typeof window !== "undefined" && window?.localStorage) {
         localStorage.setItem("user", JSON.stringify(user))
-        localStorage.setItem("session_exp", String(session.exp))
       }
 
       // Audit: LOGIN (no usar agregarAuditLog para evitar ciclo de imports)
@@ -189,7 +183,6 @@ export async function login(username: string, password: string): Promise<User | 
     if (expectedPassword !== password) return null
     if (typeof window !== "undefined" && window?.localStorage) {
       localStorage.setItem("user", JSON.stringify(user))
-      localStorage.setItem("session_exp", String(Date.now() + 30 * 60_000))
     }
     try {
       await supabase.from("audit_logs").insert({
@@ -232,7 +225,6 @@ export function logout(): void {
   } finally {
     if (typeof window !== "undefined" && window?.localStorage) {
       localStorage.removeItem("user")
-      localStorage.removeItem("session_exp")
     }
     console.log("Usuario deslogueado")
   }
@@ -244,15 +236,9 @@ export function getCurrentUser(): User | null {
     const userStr = localStorage.getItem("user")
     if (!userStr) return null
 
-    const expStr = localStorage.getItem("session_exp")
-    if (expStr && Date.now() > Number(expStr)) {
-      // Expir f3 la sesi f3n
-      localStorage.removeItem("user")
-      localStorage.removeItem("session_exp")
-      return null
-    }
-
-    const user = JSON.parse(userStr)
+  // No comprobamos expiración en el cliente: el usuario permanece autenticado
+  // hasta que cierre sesión explícitamente.
+  const user = JSON.parse(userStr)
     // Avoid noisy logs on server builds
     try {
       console.log("Usuario actual obtenido:", user)
