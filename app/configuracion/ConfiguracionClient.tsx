@@ -76,7 +76,7 @@ export default function ConfiguracionPage() {
     const [users, setUsers] = useState<any[]>([])
     const [loadingUsers, setLoadingUsers] = useState(false)
     const [newUser, setNewUser] = useState({ username: "", nombre: "", password: "" })
-    const [secSettings, setSecSettings] = useState({ max_failed_attempts: 5, lockout_minutes: 15, session_timeout_minutes: 30 })
+    const [secSettings, setSecSettings] = useState({ max_failed_attempts: 5, lockout_minutes: 15, session_timeout_minutes: 60 })
     const [savingSec, setSavingSec] = useState(false)
     const [secConfirmOpen, setSecConfirmOpen] = useState(false)
     const [secAdminPassword, setSecAdminPassword] = useState("")

@@ -2758,6 +2758,34 @@ export default function AsignarOperadoresPage() {
                                 )}
                             </p>
                             </div>
+                                {/* Fecha y hora de recolección */}
+                                <div className="space-y-1 ml-12">
+                                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    Fecha y Hora de Recolección
+                                  </label>
+                                  <p className="text-sm text-gray-700">
+                                    {embarque.fecha_recolecta
+                                      ? new Date(embarque.fecha_recolecta).toLocaleString("es-MX", {
+                                        dateStyle: "medium",
+                                        timeStyle: "short",
+                                      })
+                                      : "Sin asignar"}
+                                  </p>
+                                </div>
+                                {/* Fecha y hora de entrega */}
+                                <div className="space-y-1 ml-12">
+                                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                    Fecha y Hora de Entrega
+                                  </label>
+                                  <p className="text-sm text-gray-700">
+                                    {embarque.fecha_entrega
+                                      ? new Date(embarque.fecha_entrega).toLocaleString("es-MX", {
+                                        dateStyle: "medium",
+                                        timeStyle: "short",
+                                      })
+                                      : "Sin asignar"}
+                                  </p>
+                                </div>
                             {/* Carta Porte removido de este grupo; se muestra a la derecha junto a Tipo de Servicio */}
                           </div>
                           {/* Contenedor derecho: Carta Porte, Load y Contenido juntos en la misma fila */}

@@ -465,7 +465,45 @@ export default function SubirFotosEmbarquePage() {
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-600">No. Remolque</Label>
-                <p className="text-sm">{embarque.remolque?.numero_economico || embarque.remolque?.placas || "No asignado"}</p>
+                <p className="text-sm text-gray-700">
+                  {embarque.remolque?.numero_economico ||
+                    embarque.remolque_placa ||
+                    "Sin asignar"}
+                  {embarque.remolque_placa &&
+                    !embarque.remolque && (
+                      <span className="text-xs text-blue-600 block">
+                        (Manual)
+                      </span>
+                    )}
+                </p>
+              </div>
+              {/* Fecha y hora de recolección */}
+              <div className="">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Fecha y Hora de Recolección
+                </label>
+                <p className="text-sm text-gray-700">
+                  {embarque.fecha_recolecta
+                    ? new Date(embarque.fecha_recolecta).toLocaleString("es-MX", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })
+                    : "Sin asignar"}
+                </p>
+              </div>
+              {/* Fecha y hora de entrega */}
+              <div className="">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Fecha y Hora de Entrega
+                </label>
+                <p className="text-sm text-gray-700">
+                  {embarque.fecha_entrega
+                    ? new Date(embarque.fecha_entrega).toLocaleString("es-MX", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })
+                    : "Sin asignar"}
+                </p>
               </div>
             </div>
           </CardContent>
